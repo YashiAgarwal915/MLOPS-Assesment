@@ -1,0 +1,18 @@
+# Ignore Git history and settings
+.git
+.gitignore
+
+# Ignore Docker related files
+.dockerignore
+Dockerfile
+
+# Ignore Python cache and virtual environments
+__pycache__/
+*.pyc
+.venv
+venv/
+env/
+
+# Ignore IDE-specific folders
+.vscode/
+.idea/

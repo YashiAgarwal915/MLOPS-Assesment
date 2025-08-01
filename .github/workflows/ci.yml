@@ -1,0 +1,67 @@
+name: Full MLOps Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  test_suite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run training script for context
+        run: python -m src.train
+      - name: Run Pytest
+        run: pytest
+
+  train_and_quantize:
+    needs: test_suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run training script
+        run: python -m src.train
+      - name: Run quantization script
+        run: python -m src.quantize
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-artifacts
+          path: model/
+
+  build_and_test_container:
+    needs: train_and_quantize
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Download model artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: model-artifacts
+          path: model/
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/mlops-exam:latest .
+      - name: Run container to test model
+        run: docker run --rm ${{ secrets.DOCKERHUB_USERNAME }}/mlops-exam:latest
+      - name: Push Docker image to Docker Hub
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/mlops-exam:latest
